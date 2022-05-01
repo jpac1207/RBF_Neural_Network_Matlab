@@ -3,8 +3,8 @@
 % Os valores de retorno representam os padrões de entrada e de saída
 % convertidos para os escalares respectivos
 function [processedData, processedLabels] = preProcessing(data, preProcessingConfig)  
-    %rows = size(data, 1);
-    rows = 10;
+    rows = size(data, 1);
+    %rows = 10;
     dataMatrix = zeros(rows, size(data, 2));
     labels = zeros(4, rows);
     for i = 1:rows        

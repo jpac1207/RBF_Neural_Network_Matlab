@@ -1,5 +1,5 @@
 % ---------- Parâmetros Gerais ----------
-maxEpochs = 10; % Número de épocas do treinamento
+maxEpochs = 100; % Número de épocas do treinamento
 numberOfTrainings = 10; % Número de treinamentos a serem utilizados
 H = 7; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
@@ -16,28 +16,19 @@ preProcessingConfig.lugBootMap = containers.Map({'small', 'med', 'big'}, {1, 2, 
 preProcessingConfig.safetyMap = containers.Map({'low', 'med', 'high'}, {1, 2, 3});
 preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'}, {1, 2, 3, 4});
 
-% data = readData('./data/car.data');
-% [X, Y] = preProcessing(data, preProcessingConfig);
-% X_norm = normalizeInput(X);
-% [X_train, Y_train, X_val, Y_val, X_test, Y_test] = splitData(X_norm, Y);
-% 
-% [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, errors, valErrors]  = trainRBF(I, H, O, maxEpochs, eta, eta_gaussian, ...
-%     X_train', Y_train, X_val', Y_val);  
-
-
-%testRow = 1212;
-%predictExampleUsingBestWeights(preProcessingConfig, activationType, testRow);
+testRow = 1212;
+predictExampleUsingBestWeights(preProcessingConfig, testRow);
 
 % ---------- Chamadas de funções para computação de métricas ----------
 
-% Realiza treinamento da MLP 'numberOfTrainings' vezes.
-%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, activationType);
+% Realiza treinamento da RBF 'numberOfTrainings' vezes.
+%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
 
-% Realiza treinamento da MLP 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
+% Realiza treinamento da RBF 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
 %doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
 
-% Realiza treinamento da MLP 'numberOfTrainings' vezes variando a taxa de aprendizado.
-%doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, [0.0001 0.00001 0.000001 0.0000001 0.00000001], activationType)   
+% Realiza treinamento da RBF 'numberOfTrainings' vezes variando a taxa de aprendizado.
+%doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, [0.05 0.01 0.05 0.1 0.15], eta_gaussian)   
 
 % ---------- Implementações das funções de computação de métricas ----------
 
@@ -46,22 +37,23 @@ preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'},
 % Média dos erros de treinamento
 % Média dos erros de validação
 % Gráfico com os erros médios por epóca
-function doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, activationType)
+function doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian)
     data = readData('./data/car.data');
     [X, Y] = preProcessing(data, preProcessingConfig);
-    [X_train, Y_train, X_val, Y_val, X_test, Y_test] = splitData(X, Y);
+    X_norm = normalizeInput(X);
+    [X_train, Y_train, X_val, Y_val, X_test, Y_test] = splitData(X_norm, Y);
     finalErrors = zeros(maxEpochs, 1);  
     finalValErrors = zeros(maxEpochs, 1);
-    bestError = 1;    
+    bestError = 1;     
     
     for i = 1:numberOfTrainings
-        [hiddenVsInputWeights, hiddenVsInputBias, outputVsHiddenWeights, outputVsHiddenBias, errors, valErrors]  = trainMLP(I, H, O, maxEpochs, eta, activationType, ...
-            X_train', Y_train, X_val', Y_val);  
+        [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, errors, valErrors]  = trainRBF(I, H, O, maxEpochs, eta, eta_gaussian, ...
+            X_train', Y_train, X_val', Y_val); 
         finalErrors = finalErrors + errors;
         finalValErrors = finalValErrors + valErrors;
         if(errors(maxEpochs) < bestError)
             bestError = errors(maxEpochs);
-            save('bestWeights.mat', 'hiddenVsInputWeights', 'hiddenVsInputBias', 'outputVsHiddenWeights', 'outputVsHiddenBias');
+            save('bestWeights.mat', 'hiddenVsInputWeights', 'outputVsHiddenWeights', 'outputVsHiddenBias');
         end        
     end
     meanFinalErrors = (finalErrors./numberOfTrainings);
@@ -81,11 +73,11 @@ end
 % Média dos erros de treinamento
 % Média dos erros de validação
 % Gráfico com os erros médios por epóca
-function doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H_init, H_end, O, eta, activationType)
+function doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H_init, H_end, O, eta, eta_gaussian)
    H = H_init;
    while H <= H_end
     H
-    doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, activationType);
+    doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
     H = H+1;
     pause;
    end
@@ -96,11 +88,11 @@ end
 % Média dos erros de treinamento
 % Média dos erros de validação
 % Gráfico com os erros médios por epóca
-function doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, etas, activationType)   
+function doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, etas, eta_gaussian)   
    i = 1;  
    while i <= size(etas, 2)
        etas(i)
-       doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, etas(i), activationType);
+       doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, etas(i), eta_gaussian);
        i = i+1;
        pause;
    end
@@ -109,15 +101,14 @@ end
 % Realiza predição do exemplo da linha 'rowOfExample' do dataset,
 % utilizando os pesos salvos no arquivo 'bestWeights.mat', que deve se
 % encontrar no mesmo diretório do arquivo aqui executado
-function predictExampleUsingBestWeights(preProcessingConfig, activationType, rowOfExample)
+function predictExampleUsingBestWeights(preProcessingConfig, rowOfExample)
     weightsStruct = load('bestWeights.mat');
-    hiddenVsInputWeights = weightsStruct.hiddenVsInputWeights;
-    hiddenVsInputBias = weightsStruct.hiddenVsInputBias;
+    hiddenVsInputWeights = weightsStruct.hiddenVsInputWeights;    
     outputVsHiddenWeights = weightsStruct.outputVsHiddenWeights;
     outputVsHiddenBias = weightsStruct.outputVsHiddenBias;
     data = readData('./data/car.data');
     [X, Y] = preProcessing(data, preProcessingConfig);    
-    prediction = testMLP(hiddenVsInputWeights, hiddenVsInputBias, outputVsHiddenWeights, outputVsHiddenBias, activationType, X(rowOfExample, :)');
+    prediction = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma, X(rowOfExample, :)');
     [~, real] = max(Y(:, rowOfExample));
     sprintf("Predição: %d", prediction)
     sprintf("Real: %d", real)
@@ -127,12 +118,15 @@ end
 % os parâmetros: 
 % hiddenVsInputWeights -> Matriz que representa os pesos aprendidos para as
 % conexões entre 
-function Y = testMLP(hiddenVsInputWeights, hiddenVsInputBias, outputVsHiddenWeights, outputVsHiddenBias, activationType, X)          
-    net_h = hiddenVsInputWeights * X + hiddenVsInputBias * ones(1, size(X, 2));
-    Yh = activation(activationType, net_h);
-    net_o = outputVsHiddenWeights * Yh + outputVsHiddenBias * ones(1, size (Yh, 2));
-    Y_net = exp(net_o)./sum(exp(net_o));
-    [value, index] = max(Y_net);
+function Y = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma, X)      
+    nearestHiddenNeuronPosition = getNearestNeuronPosition(X, hiddenVsInputWeights);
+    nearestHiddenNeuron = hiddenVsInputWeights(nearestHiddenNeuronPosition, :);    
+    nearestSigma = sigma(nearestHiddenNeuronPosition);
+    mi_h = sqrt((X - nearestHiddenNeuron').^2);
+    out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));
+    net_o = outputVsHiddenWeights * out_h + outputVsHiddenBias * ones(1, size(out_h, 2));
+    Y_net = exp(net_o)/sum(exp(net_o));
+    [~, index] = max(Y_net);
     Y = index;
 end
 
@@ -280,7 +274,7 @@ end
 % mais próximo para cada padrão de entrada;
 % 'hiddenNeurons' -> Neurônios escondidos com os valores de centro
 % atualizados
-function[nearestHiddenNeurons, hiddenNeurons] = wta(inputMatrix, hiddenNeurons, eta_gaussian)
+function [nearestHiddenNeurons, hiddenNeurons] = wta(inputMatrix, hiddenNeurons, eta_gaussian)
     numberOfInstances = size(inputMatrix, 2);
     previousQuantizationError = realmax;
     howManyIterations = 0;

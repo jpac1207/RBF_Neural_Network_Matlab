@@ -1,11 +1,11 @@
 % ---------- Parâmetros Gerais ----------
-maxEpochs = 100; % Número de épocas do treinamento
+maxEpochs = 300; % Número de épocas do treinamento
 numberOfTrainings = 1; % Número de treinamentos a serem utilizados
-H = 7; % Número de neurônios na camada escondida
+H = 5; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
-eta = 0.05; % Learning Rate utilizado no cálculo do backpropagation.
-eta_gaussian = 0.05; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
+eta = 0.01; % Learning Rate utilizado no cálculo do backpropagation.
+eta_gaussian = 0.01; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
 
 % ---------- Mapas a serem utilizados no pré processamento de dados ----------
 preProcessingConfig.buyingMap = containers.Map({'vhigh', 'high', 'med', 'low'}, {5, 4, 3, 2});
@@ -17,15 +17,15 @@ preProcessingConfig.safetyMap = containers.Map({'low', 'med', 'high'}, {1, 2, 3}
 preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'}, {1, 2, 3, 4});
 
 %testRow = 1212;
-%predictExampleUsingBestWeights(preProcessingConfig, activationType, testRow);
+%predictExampleUsingBestWeights(preProcessingConfig, testRow);
 
 % ---------- Chamadas de funções para computação de métricas ----------
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes.
-doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
+%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
-%doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
+doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando a taxa de aprendizado.
 %doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, [0.05 0.01 0.05 0.1 0.15], eta_gaussian)   
@@ -47,13 +47,13 @@ function doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, 
     bestError = 1;     
     
     for i = 1:numberOfTrainings
-        [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, errors, valErrors]  = trainRBF(I, H, O, maxEpochs, eta, eta_gaussian, ...
+        [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, errors, valErrors]  = trainRBF(I, H, O, maxEpochs, eta, eta_gaussian, ...
             X_train', Y_train, X_val', Y_val); 
         finalErrors = finalErrors + errors;
         finalValErrors = finalValErrors + valErrors;
         if(errors(maxEpochs) < bestError)
             bestError = errors(maxEpochs);
-            save('bestWeights.mat', 'hiddenVsInputWeights', 'outputVsHiddenWeights', 'outputVsHiddenBias');
+            save('bestWeights.mat', 'hiddenVsInputWeights', 'outputVsHiddenWeights', 'outputVsHiddenBias', 'sigmas');
         end        
     end
     meanFinalErrors = (finalErrors./numberOfTrainings);
@@ -101,15 +101,16 @@ end
 % Realiza predição do exemplo da linha 'rowOfExample' do dataset,
 % utilizando os pesos salvos no arquivo 'bestWeights.mat', que deve se
 % encontrar no mesmo diretório do arquivo aqui executado
-function predictExampleUsingBestWeights(preProcessingConfig, activationType, rowOfExample)
+function predictExampleUsingBestWeights(preProcessingConfig, rowOfExample)
     weightsStruct = load('bestWeights.mat');
-    hiddenVsInputWeights = weightsStruct.hiddenVsInputWeights;
-    hiddenVsInputBias = weightsStruct.hiddenVsInputBias;
+    hiddenVsInputWeights = weightsStruct.hiddenVsInputWeights;    
     outputVsHiddenWeights = weightsStruct.outputVsHiddenWeights;
     outputVsHiddenBias = weightsStruct.outputVsHiddenBias;
+    sigmas = weightsStruct.sigmas;
     data = readData('./data/car.data');
     [X, Y] = preProcessing(data, preProcessingConfig);    
-    prediction = testRBF(hiddenVsInputWeights, hiddenVsInputBias, outputVsHiddenWeights, outputVsHiddenBias, activationType, X(rowOfExample, :)');
+    X_norm = normalizeInput(X);
+    prediction = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, X_norm(rowOfExample, :)');
     [~, real] = max(Y(:, rowOfExample));
     sprintf("Predição: %d", prediction)
     sprintf("Real: %d", real)
@@ -119,12 +120,15 @@ end
 % os parâmetros: 
 % hiddenVsInputWeights -> Matriz que representa os pesos aprendidos para as
 % conexões entre 
-function Y = testRBF(hiddenVsInputWeights, hiddenVsInputBias, outputVsHiddenWeights, outputVsHiddenBias, activationType, X)          
-    net_h = hiddenVsInputWeights * X + hiddenVsInputBias * ones(1, size(X, 2));
-    Yh = activation(activationType, net_h);
-    net_o = outputVsHiddenWeights * Yh + outputVsHiddenBias * ones(1, size (Yh, 2));
-    Y_net = exp(net_o)./sum(exp(net_o));
-    [value, index] = max(Y_net);
+function Y = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, X)      
+    nearestHiddenNeuronPosition = getNearestNeuronPosition(X, hiddenVsInputWeights);
+    nearestHiddenNeuron = hiddenVsInputWeights(nearestHiddenNeuronPosition, :);    
+    nearestSigma = sigmas(nearestHiddenNeuronPosition);
+    mi_h = sqrt((X - nearestHiddenNeuron').^2);
+    out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));
+    net_o = outputVsHiddenWeights * out_h + outputVsHiddenBias * ones(1, size(out_h, 2));
+    Y_net = exp(net_o)/sum(exp(net_o));
+    [~, index] = max(Y_net);
     Y = index;
 end
 
@@ -140,7 +144,7 @@ end
 % Y_train -> Padrões de saída utilizados durante o treinamento
 % X_val -> Padrões de entrada utilizados na validação
 % Y_val -> Padrões de saída utilizados na validação
-function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, finalErrors, finalValErrors] = trainRBF(I, H, O, maxEpochs, eta, ...
+function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, finalErrors, finalValErrors] = trainRBF(I, H, O, maxEpochs, eta, ...
     eta_gaussian, X_train, Y_train, X_val, Y_val)
     currentEpoch = 1;    
     errors = zeros(maxEpochs, 1);  
@@ -167,7 +171,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, final
     % cada neurônio
     T = floor(H/2);
     % Vetor que irá armazenar a abertura para cada neurônio da camada escôndida
-    sigma = zeros(H, 1);
+    sigmas = zeros(H, 1);
     % Percorre todos os neurônios da camada escondida
     distancesBetweenHiddenNeurons = zeros(H, H) + realmax;    
     % Computa a distância entre cada par de neurônios 
@@ -190,19 +194,19 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, final
             minDistances(j) = minValue;
             distancesBetweenHiddenNeurons(i, minPosition) = realmax;            
         end
-        sigma(i) = sum(minDistances)/T;
+        sigmas(i) = sum(minDistances)/T;
     end    
      
     % ---------------------- Treinamento da camada de saída ----------------------
-    error = 0;
-    validationError = 0;
-     while currentEpoch <= maxEpochs
-
+   
+    while currentEpoch <= maxEpochs
+        error = 0;
+        validationError = 0;
         for i=1:numberOfTrainingInstances          
              % ------- Hidden Layer -------                   
              nearestHiddenNeuronPosition = nearestHiddenNeurons(i);
              nearestHiddenNeuron = C(nearestHiddenNeuronPosition, :);    
-             nearestSigma = sigma(nearestHiddenNeuronPosition);
+             nearestSigma = sigmas(nearestHiddenNeuronPosition);
              mi_h = sqrt((X_train(:, i) - nearestHiddenNeuron').^2);
              out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));             
             
@@ -210,7 +214,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, final
              net_o = Woh * out_h + bias_oh * ones(1, size(out_h, 2));
              Y_net = exp(net_o)/sum(exp(net_o));   % Aplicação da softmax                 
              E = (-1).*sum((Y_train(:, i).*log(Y_net)));  % Computação do erro                   
-             %sprintf("%f", E)                 
+             %sprintf("%f", E)       
 
              % backward                 
              df =  (Y_train(:, i)-Y_net);
@@ -233,14 +237,14 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, final
              % ------- Hidden Layer -------                   
              nearestHiddenNeuronPosition = getNearestNeuronPosition(X_val(:, i), C);
              nearestHiddenNeuron = C(nearestHiddenNeuronPosition, :);    
-             nearestSigma = sigma(nearestHiddenNeuronPosition);
+             nearestSigma = sigmas(nearestHiddenNeuronPosition);
              mi_h = sqrt((X_val(:, i) - nearestHiddenNeuron').^2);
              out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));     
             
              % ------- Output Layer -------              
              net_o = Woh * out_h + bias_oh * ones(1, size(out_h, 2));
              val_Y_net = exp(net_o)/sum(exp(net_o));   % Aplicação da softmax  
-             validationError = sum(((Y_val .* (1-val_Y_net))), 'all'); 
+             validationError = validationError + sum(((Y_val(:, i) .* (1-val_Y_net)).^2), 'all'); 
         end
         validationError = validationError/numberOfValidationInstances;
         sprintf("%f", error);
@@ -254,6 +258,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, final
     hiddenVsInputWeights = C;   
     outputVsHiddenWeights = Woh;
     outputVsHiddenBias = bias_oh;
+    sigmas = sigmas;
 end
 
 function[minPosition] = getNearestNeuronPosition(inputPattern, hiddenNeurons)
