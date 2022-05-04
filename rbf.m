@@ -5,7 +5,7 @@ H = 7; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
 eta = 0.05; % Learning Rate utilizado no cálculo do backpropagation.
-eta_gaussian = 0.1; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
+eta_gaussian = 0.05; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
 
 % ---------- Mapas a serem utilizados no pré processamento de dados ----------
 preProcessingConfig.buyingMap = containers.Map({'vhigh', 'high', 'med', 'low'}, {5, 4, 3, 2});
@@ -167,7 +167,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
 
     % Considera os N/2 neurônios mais próximos para cálculo da abertura de
     % cada neurônio
-    T = floor(H/2);   
+    T = 2;       
     % Vetor que irá armazenar a abertura para cada neurônio da camada escôndida
     sigmas = zeros(H, 1);
     % Percorre todos os neurônios da camada escondida
@@ -300,7 +300,7 @@ function [nearestHiddenNeurons, hiddenNeurons] = wta(inputMatrix, hiddenNeurons,
         % Condições de Parada: maxOfIterations ou erro não diminuiu desde a
         % última iteração          
         %howManyIterations
-        sprintf("%f", quantizationError)
+        %sprintf("%f", quantizationError)
         %sprintf("%f", previousQuantizationError)
         if(quantizationError < previousQuantizationError && howManyIterations <= maxOfIterations)
             previousQuantizationError = quantizationError;
