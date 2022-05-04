@@ -208,7 +208,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
              net_o = Woh * Y_h + bias_oh * ones(1, size(Y_h, 2));
              Y_net = exp(net_o)/sum(exp(net_o));  % Aplicação da softmax                          
              E = (-1).*sum((Y_train(:, i).*log(Y_net)));  % Computação do erro                
-             trainingPredictions(:, i) = Y_net;
+             trainingPredictions(:, i) = Y_n
              % backward                 
              df =  (Y_train(:, i)-Y_net);             
              delta_bias_oh = eta * sum((E.*df)')';             
@@ -219,7 +219,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
              bias_oh = bias_oh + delta_bias_oh;            
            
         end                       
-        error = sum(((Y_train .* (1-trainingPredictions)).^2), 'all')/numberOfTrainingInstances;
+        error = sum(((Y_train .* (1-Y_net)).^2), 'all')/numberOfTrainingInstances;
         sprintf("%f", error)
         errors(currentEpoch) = error;
 
