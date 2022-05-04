@@ -5,7 +5,7 @@ H = 7; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
 eta = 0.05; % Learning Rate utilizado no cálculo do backpropagation.
-eta_gaussian = 0.05; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
+eta_gaussian = 0.1; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
 
 % ---------- Mapas a serem utilizados no pré processamento de dados ----------
 preProcessingConfig.buyingMap = containers.Map({'vhigh', 'high', 'med', 'low'}, {5, 4, 3, 2});
@@ -262,7 +262,7 @@ end
 % Retorna a posição na matriz 'hiddenNeurons' cujo elemento é mais próximo
 % do vetor coluna 'inputPattern'
 function[minPosition] = getNearestNeuronPosition(inputPattern, hiddenNeurons)
-    differences = zeros(size(hiddenNeurons, 1), 1);
+    differences = zeros(size(hiddenNeurons, 1), 1);    
     for j = 1:size(hiddenNeurons, 1)           
         absoluteDifference  = sum((inputPattern - hiddenNeurons(j, :)').^2);
         differences(j) = absoluteDifference;
@@ -287,20 +287,20 @@ function [nearestHiddenNeurons, hiddenNeurons] = wta(inputMatrix, hiddenNeurons,
         quantizationError = 0;
         % Percorre todos os vetores de entrada x
         for i = 1:numberOfInstances                 
-           % Para cada vetor de entrada, determina o centro mais próximo
-           minPosition = getNearestNeuronPosition(inputMatrix(:, i), hiddenNeurons);
-           % Atualiza o centro mais próximo              
-           hiddenNeurons(minPosition, :) = hiddenNeurons(minPosition, :) + eta_gaussian * (inputMatrix(:, i)' - hiddenNeurons(minPosition, :));           
+           % Para cada vetor de entrada, determina o centro mais próximo                      
+           minPosition = getNearestNeuronPosition(inputMatrix(:, i), hiddenNeurons);          
+           % Atualiza o centro mais próximo             
+           hiddenNeurons(minPosition, :) = hiddenNeurons(minPosition, :) + (eta_gaussian * (inputMatrix(:, i)' - hiddenNeurons(minPosition, :)));           
            nearestHiddenNeurons(i)  = minPosition;           
            % Computa erro de quantização
-           quantizationError = quantizationError + sum(sqrt((inputMatrix(:, i)' - hiddenNeurons(minPosition, :).^2)).^2);
+           quantizationError = quantizationError + sum(sqrt(((inputMatrix(:, i)' - hiddenNeurons(minPosition, :)).^2)).^2);
         end       
         quantizationError = quantizationError/numberOfInstances;
         howManyIterations = howManyIterations + 1;        
         % Condições de Parada: maxOfIterations ou erro não diminuiu desde a
         % última iteração          
         %howManyIterations
-        %sprintf("%f", quantizationError)
+        sprintf("%f", quantizationError)
         %sprintf("%f", previousQuantizationError)
         if(quantizationError < previousQuantizationError && howManyIterations <= maxOfIterations)
             previousQuantizationError = quantizationError;
