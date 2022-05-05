@@ -1,10 +1,10 @@
 % ---------- Parâmetros Gerais ----------
-maxEpochs = 1000; % Número de épocas do treinamento
+maxEpochs = 500; % Número de épocas do treinamento
 numberOfTrainings = 1; % Número de treinamentos a serem utilizados
-H = 7; % Número de neurônios na camada escondida
+H = 10; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
-eta = 0.05; % Learning Rate utilizado no cálculo do backpropagation.
+eta = 0.1; % Learning Rate utilizado no cálculo do backpropagation.
 eta_gaussian = 0.05; % Learning Rate utilizado no cálculo da atualização de centro dos neurônios de ativação gaussiana.
 
 % ---------- Mapas a serem utilizados no pré processamento de dados ----------
@@ -22,7 +22,7 @@ preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'},
 % ---------- Chamadas de funções para computação de métricas ----------
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes.
-doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
+%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
 %doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
@@ -120,14 +120,12 @@ end
 % os parâmetros: 
 % hiddenVsInputWeights -> Matriz que representa os pesos aprendidos para as
 % conexões entre 
-function Y = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, X)      
-    nearestHiddenNeuronPosition = getNearestNeuronPosition(X, hiddenVsInputWeights);
-    nearestHiddenNeuron = hiddenVsInputWeights(nearestHiddenNeuronPosition, :);    
-    nearestSigma = sigmas(nearestHiddenNeuronPosition);
-    mi_h = sqrt((X - nearestHiddenNeuron').^2);
-    out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));
-    net_o = outputVsHiddenWeights * out_h + outputVsHiddenBias * ones(1, size(out_h, 2));
-    Y_net = exp(net_o)/sum(exp(net_o));
+function Y = testRBF(hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigmas, X)     
+    mi_h = sqrt(sum((X - hiddenVsInputWeights').^2))';            
+    Y_h = exp(-((mi_h.^2)./((2*sigmas).^2)));             
+    % ------- Output Layer -------    
+    net_o = outputVsHiddenWeights * Y_h + outputVsHiddenBias * ones(1, size(Y_h, 2));
+    Y_net = exp(net_o)/sum(exp(net_o));  % Aplicação da softmax                               
     [~, index] = max(Y_net);
     Y = index;
 end
@@ -167,7 +165,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
 
     % Considera os N/2 neurônios mais próximos para cálculo da abertura de
     % cada neurônio
-    T = floor(H/3);       
+    T = floor(H/2);
     % Vetor que irá armazenar a abertura para cada neurônio da camada escôndida
     sigmas = zeros(H, 1);
     % Percorre todos os neurônios da camada escondida
@@ -175,7 +173,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
     % Computa a distância entre cada par de neurônios 
     for i=1:H
         for j=i+1:H            
-            distanceBetweenNeuronsIandJ = (sum((C(i, :) - C(j, :)).^2)/H);            
+            distanceBetweenNeuronsIandJ = sqrt(sum((C(i, :) - C(j, :)).^2));            
             distancesBetweenHiddenNeurons(i, j) = distanceBetweenNeuronsIandJ;
             distancesBetweenHiddenNeurons(j, i) = distanceBetweenNeuronsIandJ;
         end
@@ -199,11 +197,12 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
     while currentEpoch <= maxEpochs
         error = 0;
         validationError = 0;
-        trainingPredictions = zeros(O,numberOfTrainingInstances);
+        trainingPredictions = zeros(O, numberOfTrainingInstances);
+        validationPredictions = zeros(O, numberOfValidationInstances);
         for i=1:numberOfTrainingInstances          
-             % ------- Hidden Layer -------
-             mi_h = sqrt(sum((X_train(:, i) - C').^2))';             
-             Y_h = exp(-((mi_h.^2)./(2*sigmas.^2)));     
+             % ------- Hidden Layer -------            
+             mi_h = sqrt(sum((X_train(:, i) - C').^2))'; %OK             
+             Y_h = exp(-((mi_h.^2)./((2*sigmas).^2)));             
              % ------- Output Layer -------    
              net_o = Woh * Y_h + bias_oh * ones(1, size(Y_h, 2));
              Y_net = exp(net_o)/sum(exp(net_o));  % Aplicação da softmax                          
@@ -220,24 +219,21 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
            
         end                       
         error = sum(((Y_train .* (1-trainingPredictions)).^2), 'all')/numberOfTrainingInstances;
-        sprintf("%f", error)
+        %sprintf("%f", error)
         errors(currentEpoch) = error;
-
-%         for i=1:numberOfValidationInstances            
-%              % ------- Hidden Layer -------                   
-%              nearestHiddenNeuronPosition = getNearestNeuronPosition(X_val(:, i), C);
-%              nearestHiddenNeuron = C(nearestHiddenNeuronPosition, :);    
-%              nearestSigma = sigmas(nearestHiddenNeuronPosition);
-%              mi_h = sqrt((X_val(:, i) - nearestHiddenNeuron').^2);
-%              out_h = exp(-((mi_h.^2)./(2*nearestSigma.^2)));     
-%             
-%              % ------- Output Layer -------              
-%              net_o = Woh * out_h + bias_oh * ones(1, size(out_h, 2));
-%              val_Y_net = exp(net_o)/sum(exp(net_o));   % Aplicação da softmax  
-%              validationError = validationError + sum(((Y_val(:, i) .* (1-val_Y_net)).^2), 'all'); 
-%         end
-        validationError = validationError/numberOfValidationInstances;
-        %sprintf("%f", error);
+        
+        % Validação
+        for i=1:numberOfValidationInstances 
+              % ------- Hidden Layer -------            
+             mi_h = sqrt(sum((X_val(:, i) - C').^2))'; %OK             
+             Y_h = exp(-((mi_h.^2)./((2*sigmas).^2)));             
+             % ------- Output Layer -------    
+             net_o = Woh * Y_h + bias_oh * ones(1, size(Y_h, 2));
+             Y_net = exp(net_o)/sum(exp(net_o));  % Aplicação da softmax                                                 
+             validationPredictions(:, i) = Y_net;
+        end
+        validationError = sum(((Y_val(:, i) .* (1-validationPredictions)).^2), 'all')/numberOfValidationInstances;         
+        %sprintf("%f", validationError);
         validationErrors(currentEpoch) = validationError;
 
         currentEpoch = currentEpoch + 1;
