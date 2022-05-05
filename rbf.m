@@ -1,6 +1,6 @@
 % ---------- Parâmetros Gerais ----------
 maxEpochs = 500; % Número de épocas do treinamento
-numberOfTrainings = 1; % Número de treinamentos a serem utilizados
+numberOfTrainings = 10; % Número de treinamentos a serem utilizados
 H = 10; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
@@ -22,7 +22,7 @@ preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'},
 % ---------- Chamadas de funções para computação de métricas ----------
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes.
-%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
+doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
 %doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
@@ -232,7 +232,7 @@ function [hiddenVsInputWeights, outputVsHiddenWeights, outputVsHiddenBias, sigma
              Y_net = exp(net_o)/sum(exp(net_o));  % Aplicação da softmax                                                 
              validationPredictions(:, i) = Y_net;
         end
-        validationError = sum(((Y_val(:, i) .* (1-validationPredictions)).^2), 'all')/numberOfValidationInstances;         
+        validationError = sum(((Y_val .* (1-validationPredictions)).^2), 'all')/numberOfValidationInstances;         
         %sprintf("%f", validationError);
         validationErrors(currentEpoch) = validationError;
 
