@@ -1,7 +1,7 @@
 % ---------- Parâmetros Gerais ----------
-maxEpochs = 500; % Número de épocas do treinamento
+maxEpochs = 1000; % Número de épocas do treinamento
 numberOfTrainings = 10; % Número de treinamentos a serem utilizados
-H = 10; % Número de neurônios na camada escondida
+H = 5; % Número de neurônios na camada escondida
 I = 6; % Número de neurônios na camada de entrada
 O = 4; % Número de neurônios na camada de saída
 eta = 0.1; % Learning Rate utilizado no cálculo do backpropagation.
@@ -16,19 +16,19 @@ preProcessingConfig.lugBootMap = containers.Map({'small', 'med', 'big'}, {1, 2, 
 preProcessingConfig.safetyMap = containers.Map({'low', 'med', 'high'}, {1, 2, 3});
 preProcessingConfig.labelMap = containers.Map({'unacc', 'acc', 'good', 'vgood'}, {1, 2, 3, 4});
 
-%testRow = 1212;
-%predictExampleUsingBestWeights(preProcessingConfig, testRow);
+testRow = 1212;
+predictExampleUsingBestWeights(preProcessingConfig, testRow);
 
 % ---------- Chamadas de funções para computação de métricas ----------
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes.
-doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
+%doTraining(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, eta, eta_gaussian);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando o número de neurônios da camada escondida.
-%doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, activationType);
+%doTrainingWithHiddenLayerSizeVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, 5, 15, O, eta, eta_gaussian);
 
 % Realiza treinamento da RBF 'numberOfTrainings' vezes variando a taxa de aprendizado.
-%doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, [0.05 0.01 0.05 0.1 0.15], eta_gaussian)   
+%doTrainingWithEtaVariation(preProcessingConfig, maxEpochs, numberOfTrainings, I, H, O, [0.005 0.01 0.05 0.1 0.15], eta_gaussian)   
 
 % ---------- Implementações das funções de computação de métricas ----------
 
